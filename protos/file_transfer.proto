@@ -1,0 +1,22 @@
+syntax = "proto3";
+package filetransfer;
+
+option go_package = "go-merkle-file-transfer/protos";
+
+service FileTransfer {
+    rpc UploadFile (FileData) returns (UploadStatus);
+    rpc DownloadFile (FileName) returns (FileData);
+}
+
+message FileData {
+    string name = 1;
+    bytes content = 2;
+}
+
+message FileName {
+    string name = 1;
+}
+
+message UploadStatus {
+    bool success = 1;
+}
