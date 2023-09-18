@@ -6,6 +6,7 @@ import (
 
 	pb "go-merkle-file-transfer/protos/lib"
 
+	"google.golang.org/grpc"
 )
 
 func uploadFile(client pb.FileTransferClient, fileName string, content []byte) error {
@@ -27,3 +28,25 @@ func downloadFile(client pb.FileTransferClient, fileName string) ([]byte, error)
 }
 
 
+func main() {
+	conn, err := grpc.Dial(":5000", grpc.WithInsecure())
+	if err != nil {
+		log.Fatalf("Did not connect: %v", err)
+	}
+	defer conn.Close()
+
+	client := pb.NewFileTransferClient(conn)
+
+	err = uploadFile(client, "example.txt", []byte("This is an example"))
+	if err != nil {
+		log.Fatalf("Upload failed: %v", err)
+	}
+
+	content, err := downloadFile(client, "example.txt")
+	if err != nil {
+		log.Fatalf("Download failed: %v", err)
+	}
+
+	log.Printf("Downloaded content: %s", string(content))
+
+}
