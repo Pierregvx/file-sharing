@@ -5,7 +5,7 @@ option go_package = "go-merkle-file-transfer/protos";
 
 service FileTransfer {
     rpc UploadFile (FileData) returns (UploadStatus);
-    rpc DownloadFile (FileName) returns (FileData);
+    rpc DownloadFile (FileName) returns (FileDownloadResponse); // changed from FileData to FileDownloadResponse
 }
 
 message FileData {
@@ -19,4 +19,9 @@ message FileName {
 
 message UploadStatus {
     bool success = 1;
+}
+
+message FileDownloadResponse {
+    bytes content = 1;
+    repeated bytes merkle_proof = 2; // Field to hold Merkle proof
 }

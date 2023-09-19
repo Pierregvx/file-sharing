@@ -6,7 +6,7 @@ import (
 	"net"
 
 	merkleTree "go-merkle-file-transfer/merkle"
-	pb "go-merkle-file-transfer/protos/lib"
+	pb "go-merkle-file-transfer/protos"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -14,10 +14,12 @@ import (
 )
 
 type FileTransferServer struct {
-	pb.UnimplementedFileTransferServer // If using protocol buffer's code generation
-	MerkleTree                         *merkleTree.MerkleTree
-	FileMap                            map[string][]byte
+	pb.UnimplementedFileTransferServer
+	MerkleTree *merkleTree.MerkleTree
+	FileMap    map[string][]byte
 }
+
+var merkletree = merkleTree.NewMerkleTree()
 
 func (s *FileTransferServer) UploadFile(ctx context.Context, in *pb.FileData) (*pb.UploadStatus, error) {
 	log.Printf("Received UploadFile request for file: %s\n", in.GetName())
@@ -25,22 +27,14 @@ func (s *FileTransferServer) UploadFile(ctx context.Context, in *pb.FileData) (*
 
 	// Storing file content in memory (in a production system, you'd probably write this to disk)
 	s.FileMap[in.GetName()] = in.GetContent()
-
+	
 	// Update the Merkle tree
 	s.MerkleTree.AddFile(in.GetContent())
-	log.Printf("Added to Merkle Tree: %s", in.GetName())
-	newRoot, err := s.MerkleTree.ComputeRoot()
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "Failed to compute Merkle root: %v", err)
-	}
 
-	log.Printf("File %s in file map: %x", in.GetName(), s.FileMap[in.GetName()])
-	log.Printf("New Merkle root: %x", newRoot)
-	log.Println("Merkle tree recalculated", s.MerkleTree)
 	return &pb.UploadStatus{Success: true}, nil
 }
 
-func (s *FileTransferServer) DownloadFile(ctx context.Context, in *pb.FileName) (*pb.FileData, error) {
+func (s *FileTransferServer) DownloadFile(ctx context.Context, in *pb.FileName) (*pb.FileDownloadResponse, error) {
 	log.Printf("Received DownloadFile request for file: %s\n", in.GetName())
 
 	// Retrieve the file (again, in a production system, you'd probably read this from disk)
@@ -51,16 +45,20 @@ func (s *FileTransferServer) DownloadFile(ctx context.Context, in *pb.FileName) 
 	}
 
 	leafIndex := s.MerkleTree.GetIndexFromContent(fileContent)
-	log.Printf("Leaf index: %d", leafIndex)
+	if leafIndex == -1 {
+		return nil, status.Errorf(codes.NotFound, "File not found in Merkle Tree")
+	}
 
 	proof, err := s.MerkleTree.GenerateProof(leafIndex)
 	if err != nil {
 		log.Printf("Error generating Merkle proof: %v", err)
 		return nil, status.Errorf(codes.Internal, "Could not generate Merkle proof")
 	}
+	return &pb.FileDownloadResponse{
+		Content:     fileContent,
+		MerkleProof: proof,
+	}, nil
 
-	log.Printf("Merkle Proof: %x", proof)
-	return &pb.FileData{Name: in.GetName(), Content: fileContent}, nil
 }
 func NewFileTransferServer() *FileTransferServer {
 	return &FileTransferServer{

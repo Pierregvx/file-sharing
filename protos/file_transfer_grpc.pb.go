@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.3.0
 // - protoc             v3.12.4
-// source: file_transfer.proto
+// source: protos/file_transfer.proto
 
 package protos
 
@@ -28,7 +28,7 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type FileTransferClient interface {
 	UploadFile(ctx context.Context, in *FileData, opts ...grpc.CallOption) (*UploadStatus, error)
-	DownloadFile(ctx context.Context, in *FileName, opts ...grpc.CallOption) (*FileData, error)
+	DownloadFile(ctx context.Context, in *FileName, opts ...grpc.CallOption) (*FileDownloadResponse, error)
 }
 
 type fileTransferClient struct {
@@ -48,8 +48,8 @@ func (c *fileTransferClient) UploadFile(ctx context.Context, in *FileData, opts 
 	return out, nil
 }
 
-func (c *fileTransferClient) DownloadFile(ctx context.Context, in *FileName, opts ...grpc.CallOption) (*FileData, error) {
-	out := new(FileData)
+func (c *fileTransferClient) DownloadFile(ctx context.Context, in *FileName, opts ...grpc.CallOption) (*FileDownloadResponse, error) {
+	out := new(FileDownloadResponse)
 	err := c.cc.Invoke(ctx, FileTransfer_DownloadFile_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -62,7 +62,7 @@ func (c *fileTransferClient) DownloadFile(ctx context.Context, in *FileName, opt
 // for forward compatibility
 type FileTransferServer interface {
 	UploadFile(context.Context, *FileData) (*UploadStatus, error)
-	DownloadFile(context.Context, *FileName) (*FileData, error)
+	DownloadFile(context.Context, *FileName) (*FileDownloadResponse, error)
 	mustEmbedUnimplementedFileTransferServer()
 }
 
@@ -73,7 +73,7 @@ type UnimplementedFileTransferServer struct {
 func (UnimplementedFileTransferServer) UploadFile(context.Context, *FileData) (*UploadStatus, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UploadFile not implemented")
 }
-func (UnimplementedFileTransferServer) DownloadFile(context.Context, *FileName) (*FileData, error) {
+func (UnimplementedFileTransferServer) DownloadFile(context.Context, *FileName) (*FileDownloadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DownloadFile not implemented")
 }
 func (UnimplementedFileTransferServer) mustEmbedUnimplementedFileTransferServer() {}
@@ -142,5 +142,5 @@ var FileTransfer_ServiceDesc = grpc.ServiceDesc{
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "file_transfer.proto",
+	Metadata: "protos/file_transfer.proto",
 }
