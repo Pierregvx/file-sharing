@@ -1,17 +1,50 @@
 version: "3.9"
 services:
-  client:
-    build: ./client
-    networks:
-      - merkle-net
-
-  server:
-    build: ./server
+  server1:
+    build: 
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      - SERVER_PORT=5001
     ports:
-      - "5000:5000"
+      - "5001:5001"
     networks:
       - merkle-net
-
+    depends_on:
+      - db
+  server2:
+    build: 
+      context: .
+      dockerfile: server/Dockerfile
+    environment:
+      - SERVER_PORT=5002
+    ports:
+      - "5002:5002"
+    networks:
+      - merkle-net
+    depends_on:
+      - db
+  client:
+    build: 
+      context: .  # the root directory
+      dockerfile: client/Dockerfile
+    depends_on:
+      - server1
+      - server2
+    networks:
+      - merkle-net
+  db:
+    image: postgres:latest
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    environment:
+      "POSTGRES_DB": "mydb"
+      "POSTGRES_USER": "user"
+      "POSTGRES_PASSWORD": "password"
+    networks:
+      - merkle-net
 networks:
   merkle-net:
-
+    driver: bridge

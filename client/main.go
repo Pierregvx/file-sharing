@@ -5,6 +5,10 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"os"
+
+	// "os"
+	"time"
 
 	"log"
 
@@ -12,7 +16,7 @@ import (
 	pb "go-merkle-file-transfer/protos"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
+	// "google.golang.org/grpc/credentials/insecure"
 )
 
 var root *merkleTree.Node
@@ -75,17 +79,40 @@ func downloadFile(client pb.FileTransferClient, fileName string) ([]byte, error)
 	return response.Content, nil
 }
 
+// Reads file from a given location and returns its content
+func getFileFromLocation(filePath string) ([]byte, error) {
+    return os.ReadFile(filePath)
+}
 
 func main() {
-	conn, err := grpc.Dial(":5000", grpc.WithTransportCredentials(insecure.NewCredentials()))
-	if err != nil {
-		log.Fatalf("Did not connect: %v", err)
+	const maxRetries = 5
+	var conn *grpc.ClientConn
+
+	serverAddr, ok := os.LookupEnv("SERVER_ADDR")
+	if !ok {
+		serverAddr = "server1:5001" // default address
 	}
+
+	for i := 0; i < maxRetries; i++ {
+		connec, err := grpc.Dial(serverAddr, grpc.WithInsecure())
+		if err == nil {
+			conn = connec
+			log.Println("Successfully connected to server")
+			break
+		}
+		log.Printf("Failed to connect, retrying... (Attempt %d)\n", i+1)
+		time.Sleep(2 * time.Second) // Wait before retrying
+	}
+
+	if conn == nil {
+		log.Fatalf("Failed to connect after %d attempts", maxRetries)
+	}
+
 	defer conn.Close()
 
 	client := pb.NewFileTransferClient(conn)
 
-	err = uploadFile(client, "example.txt", []byte("This is an example"))
+	err := uploadFile(client, "example.txt", []byte("This is an example"))
 	if err != nil {
 		log.Fatalf("Upload failed: %v", err)
 	}
