@@ -12,6 +12,7 @@ services:
       - merkle-net
     depends_on:
       - db
+
   server2:
     build: 
       context: .
@@ -24,15 +25,32 @@ services:
       - merkle-net
     depends_on:
       - db
-  client:
-    build: 
-      context: .  # the root directory
+
+  upload-client:
+    build:
+      context : .
       dockerfile: client/Dockerfile
+    volumes:
+      - ./demo:/app/demo
+    networks:
+      - merkle-net
+    entrypoint: ["/client", "-operation=upload", "-filePaths=/app/demo/file1.txt,/app/demo/file2.txt,/app/demo/file3.txt,/app/demo/file4.txt"]
     depends_on:
       - server1
       - server2
+      - client-db
+
+  download-client:
+    build:
+      context : .
+      dockerfile: client/Dockerfile
     networks:
       - merkle-net
+    entrypoint: ["/client", "-operation=download", "-filePaths=/app/demo/file1.txt"]
+    depends_on:
+      - upload-client
+      - client-db
+
   db:
     image: postgres:latest
     volumes:
@@ -45,6 +63,20 @@ services:
       "POSTGRES_PASSWORD": "password"
     networks:
       - merkle-net
+
+  client-db:
+    image: postgres:latest
+    volumes:
+      - ./init-client.sql:/docker-entrypoint-initdb.d/init-client.sql
+    ports:
+      - "5433:5432"
+    environment:
+      "POSTGRES_DB": "clientdb"
+      "POSTGRES_USER": "clientuser"
+      "POSTGRES_PASSWORD": "clientpassword"
+    networks:
+      - merkle-net
+
 networks:
   merkle-net:
     driver: bridge

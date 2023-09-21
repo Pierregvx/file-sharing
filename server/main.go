@@ -40,6 +40,8 @@ func (s *FileTransferServer) UploadFile(ctx context.Context, in *pb.FileData) (*
     }
     defer stmt.Close()
 
+	
+
     // Execute the SQL statement
     _, err = stmt.Exec(in.GetName(), in.GetContent())
     if err != nil {

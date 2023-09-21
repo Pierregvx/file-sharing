@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
-	"log"
+	"fmt"
 )
 
 type Node struct {
@@ -27,15 +27,31 @@ func NewMerkleTree() *MerkleTree {
 	}
 }
 
+func (mt *MerkleTree) AddLeaves(leaves [][]byte) {
+	for _, leaf := range leaves {
+		hash := sha256.Sum256(leaf)
+		newLeaf := &Node{
+			Hash: hash[:],
+		}
+		mt.Leaves = append(mt.Leaves, newLeaf)
+	}
+	mt.recalculateTree()
+}
+
 // AddFile adds a new file (as a leaf node) and re-calculates the tree.
-func (mt *MerkleTree) AddFile(fileContent []byte) {
+func (mt *MerkleTree) AddFile(fileContent []byte)error {
 	hash := sha256.Sum256(fileContent)
 	newLeaf := &Node{
 		Hash: hash[:],
 	}
 
 	mt.Leaves = append(mt.Leaves, newLeaf)
-	mt.recalculateTree()
+	err:=mt.recalculateTree()
+	if err!=nil{
+		return fmt.Errorf("recalculate tree error: %v",err)
+	}
+	return nil
+	
 }
 
 func (mt *MerkleTree) recalculateTree() error {
@@ -99,7 +115,6 @@ func (mt *MerkleTree) GenerateProof(leafIndex int) ([][]byte, error) {
 	for current.Parent != nil {
 		sibling := getSibling(current)
 		if sibling != nil {
-			log.Printf("sibling: %x", sibling.Hash)
 			proof = append(proof, sibling.Hash)
 		}
 		current = current.Parent
