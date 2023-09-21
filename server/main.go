@@ -3,12 +3,12 @@ package main
 import (
 	"context"
 	"database/sql"
-	"log"
-	"net"
-	"os"
 	_ "github.com/lib/pq" // The underscore is important
 	merkleTree "go-merkle-file-transfer/merkle"
 	pb "go-merkle-file-transfer/protos"
+	"log"
+	"net"
+	"os"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -18,61 +18,55 @@ import (
 type FileTransferServer struct {
 	pb.UnimplementedFileTransferServer
 	MerkleTree *merkleTree.MerkleTree
-	DB         *sql.DB  // Add this line
+	DB         *sql.DB
 }
-
 
 var merkletree = merkleTree.NewMerkleTree()
 
 func (s *FileTransferServer) UploadFile(ctx context.Context, in *pb.FileData) (*pb.UploadStatus, error) {
-    log.Printf("Received UploadFile request for file: %s\n", in.GetName())
-    log.Printf("File content: %x", in.GetContent())
+	log.Printf("Received UploadFile request for file: %s\n", in.GetName())
 
-    
-    // Update the Merkle tree
-    s.MerkleTree.AddFile(in.GetContent())
+	// Update the Merkle tree
+	s.MerkleTree.AddFile(in.GetContent())
 
-    // Prepare SQL statement to insert file content and metadata into the database
-    stmt, err := s.DB.Prepare("INSERT INTO file_storage(file_name, file_content) VALUES($1, $2)")
-    if err != nil {
-        log.Printf("Failed to prepare SQL statement: %v", err)
-        return nil, status.Errorf(codes.Internal, "Internal Server Error")
-    }
-    defer stmt.Close()
+	// Prepare SQL statement to insert file content and metadata into the database
+	stmt, err := s.DB.Prepare("INSERT INTO file_storage(file_name, file_content) VALUES($1, $2)")
+	if err != nil {
+		log.Printf("Failed to prepare SQL statement: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal Server Error")
+	}
+	defer stmt.Close()
 
-	
+	// Execute the SQL statement
+	_, err = stmt.Exec(in.GetName(), in.GetContent())
+	if err != nil {
+		log.Printf("Failed to execute SQL statement: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal Server Error")
+	}
 
-    // Execute the SQL statement
-    _, err = stmt.Exec(in.GetName(), in.GetContent())
-    if err != nil {
-        log.Printf("Failed to execute SQL statement: %v", err)
-        return nil, status.Errorf(codes.Internal, "Internal Server Error")
-    }
-
-    return &pb.UploadStatus{Success: true}, nil
+	return &pb.UploadStatus{Success: true}, nil
 }
-
 
 func (s *FileTransferServer) DownloadFile(ctx context.Context, in *pb.FileName) (*pb.FileDownloadResponse, error) {
 	log.Printf("Received DownloadFile request for file: %s\n", in.GetName())
 
 	// Prepare SQL statement to fetch file content and metadata
-	stmt, err := s.DB.Prepare("SELECT file_content FROM file_storage WHERE file_name=$1")  
-    if err != nil {
-        log.Printf("Failed to prepare SQL statement: %v", err)
-        return nil, status.Errorf(codes.Internal, "Internal Server Error")
-    }
-    defer stmt.Close()
+	stmt, err := s.DB.Prepare("SELECT file_content FROM file_storage WHERE file_name=$1")
+	if err != nil {
+		log.Printf("Failed to prepare SQL statement: %v", err)
+		return nil, status.Errorf(codes.Internal, "Internal Server Error")
+	}
+	defer stmt.Close()
 
-    var fileContent []byte
-    err = stmt.QueryRow(in.GetName()).Scan(&fileContent)
-    if err != nil {
-        log.Printf("Failed to execute SQL statement: %v", err)
-        return nil, status.Errorf(codes.NotFound, "File not found")
-    }
+	var fileContent []byte
+	err = stmt.QueryRow(in.GetName()).Scan(&fileContent)
+	if err != nil {
+		log.Printf("Failed to execute SQL statement: %v", err)
+		return nil, status.Errorf(codes.NotFound, "File not found")
+	}
 
 	log.Printf("Retrieved content: %x", fileContent)
-	if fileContent == nil{
+	if fileContent == nil {
 		return nil, status.Errorf(codes.NotFound, "File not found")
 	}
 
@@ -86,6 +80,7 @@ func (s *FileTransferServer) DownloadFile(ctx context.Context, in *pb.FileName) 
 		log.Printf("Error generating Merkle proof: %v", err)
 		return nil, status.Errorf(codes.Internal, "Could not generate Merkle proof")
 	}
+	log.Printf("\n\n\n\n\n\n\n\n proof in server %x", proof)
 	return &pb.FileDownloadResponse{
 		Content:     fileContent,
 		MerkleProof: proof,
@@ -95,7 +90,7 @@ func (s *FileTransferServer) DownloadFile(ctx context.Context, in *pb.FileName) 
 func NewFileTransferServer(db *sql.DB) *FileTransferServer {
 	return &FileTransferServer{
 		MerkleTree: merkleTree.NewMerkleTree(),
-		DB:         db,  // Add this line
+		DB:         db,
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"log"
 )
 
 type Node struct {
@@ -39,19 +40,19 @@ func (mt *MerkleTree) AddLeaves(leaves [][]byte) {
 }
 
 // AddFile adds a new file (as a leaf node) and re-calculates the tree.
-func (mt *MerkleTree) AddFile(fileContent []byte)error {
+func (mt *MerkleTree) AddFile(fileContent []byte) error {
 	hash := sha256.Sum256(fileContent)
 	newLeaf := &Node{
 		Hash: hash[:],
 	}
 
 	mt.Leaves = append(mt.Leaves, newLeaf)
-	err:=mt.recalculateTree()
-	if err!=nil{
-		return fmt.Errorf("recalculate tree error: %v",err)
+	err := mt.recalculateTree()
+	if err != nil {
+		return fmt.Errorf("recalculate tree error: %v", err)
 	}
 	return nil
-	
+
 }
 
 func (mt *MerkleTree) recalculateTree() error {
