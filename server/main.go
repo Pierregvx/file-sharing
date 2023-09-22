@@ -80,7 +80,6 @@ func (s *FileTransferServer) DownloadFile(ctx context.Context, in *pb.FileName) 
 		log.Printf("Error generating Merkle proof: %v", err)
 		return nil, status.Errorf(codes.Internal, "Could not generate Merkle proof")
 	}
-	log.Printf("\n\n\n\n\n\n\n\n proof in server %x", proof)
 	return &pb.FileDownloadResponse{
 		Content:     fileContent,
 		MerkleProof: proof,
